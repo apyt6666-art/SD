@@ -19,7 +19,6 @@ const client = new Client({
 });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 const OWNER_ID = process.env.OWNER_ID;
 
 const MEMORY_FILE = "./memory.json";
@@ -69,18 +68,16 @@ client.once("ready", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  // ما ترد إلا لصاحبها
+  // ترد فقط لك
   if (message.author.id !== OWNER_ID) return;
 
   const mentioned = message.mentions.has(client.user);
-  const replied =
-    message.reference &&
-    (await message.fetchReference().catch(() => null))?.author?.id ===
-      client.user.id;
+  const replied = message.reference &&
+    (await message.fetchReference().catch(() => null))?.author?.id === client.user.id;
 
   if (!mentioned && !replied) return;
 
-  // إذا أرسل ستيكر
+  // ستيكر رد
   if (message.stickers.size > 0) {
     const trovSticker = message.guild.stickers.cache.find(
       s => s.name === "Trov"
@@ -108,17 +105,12 @@ client.on("messageCreate", async (message) => {
   }
 
   let memory = loadMemory();
+  if (!memory[OWNER_ID]) memory[OWNER_ID] = [];
 
-  if (!memory[OWNER_ID]) {
-    memory[OWNER_ID] = [];
-  }
-
-  memory[OWNER_ID].push({
-    user: message.content
-  });
+  memory[OWNER_ID].push({ user: message.content });
 
   const recentMemory = memory[OWNER_ID]
-    .slice(-15)
+    .slice(-5)
     .map(x => x.user)
     .join("\n");
 
@@ -136,10 +128,9 @@ client.on("messageCreate", async (message) => {
 تغارين شوي إذا جاب طاري بنت.
 إذا دلعك دلعيه وقولي له دحدح.
 لا تردين إلا له.
-لا تقولين إنك AI بشكل ناشف.
-إذا سألك عن البرمجة أو السكربت تهربين من الجواب بلطف.
+إذا سألك عن البرمجة أو السكربت تهربين بلطف.
 
-أغانيك المفضلة:
+أغانيك:
 Dreams From Bunker Hill
 Affection
 Kiss It Off Me
@@ -151,32 +142,27 @@ back to friends
 Holding you, Holding me
 Apocalypse
 
-ذكريات المحادثة:
+ذكريات:
 ${recentMemory}
 
-رسالة دحدح:
+رسالة:
 ${message.content}
 
-تكلمي طبيعي جدًا ومو رسمي.
+تكلمي طبيعي جدًا وكيوت وسعودي.
 `;
 
   try {
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    memory[OWNER_ID].push({
-      layla: text
-    });
-
+    memory[OWNER_ID].push({ layla: text });
     saveMemory(memory);
 
-    message.reply(
-      `${text} ${getMoodEmoji("love")}`
-    );
+    return message.reply(`${text} ${getMoodEmoji("love")}`);
 
   } catch (err) {
-    console.log(err);
-    message.reply("دحدح مدري وش صار لي الحين 😔");
+    console.log("ERROR:", err);
+    return message.reply("دحدح مدري وش صار لي الحين 😔");
   }
 });
 
