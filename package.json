@@ -9,8 +9,8 @@
   "author": "دحدح",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "openai": "^4.0.0"
   }
 }
