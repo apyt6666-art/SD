@@ -1,0 +1,16 @@
+{
+  "name": "layla-bot",
+  "version": "1.0.0",
+  "description": "Layla AI Discord Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "دحدح",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0"
+  }
+}
