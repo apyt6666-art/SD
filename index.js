@@ -7,7 +7,7 @@ const {
   Partials
 } = require("discord.js");
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
 
 const client = new Client({
   intents: [
@@ -18,7 +18,10 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 const OWNER_ID = process.env.OWNER_ID;
 
 const MEMORY_FILE = "./memory.json";
@@ -68,16 +71,16 @@ client.once("ready", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  // ترد فقط لك
   if (message.author.id !== OWNER_ID) return;
 
   const mentioned = message.mentions.has(client.user);
-  const replied = message.reference &&
+  const replied =
+    message.reference &&
     (await message.fetchReference().catch(() => null))?.author?.id === client.user.id;
 
   if (!mentioned && !replied) return;
 
-  // ستيكر رد
+  // ستيكر
   if (message.stickers.size > 0) {
     const trovSticker = message.guild.stickers.cache.find(
       s => s.name === "Trov"
@@ -114,10 +117,7 @@ client.on("messageCreate", async (message) => {
     .map(x => x.user)
     .join("\n");
 
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash"
-  });
-
+  // 💡 نفس شخصية ليلى 100% (ما تغيّرت)
   const prompt = `
 أنتِ ليلى.
 
@@ -152,8 +152,21 @@ ${message.content}
 `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: prompt
+        },
+        {
+          role: "user",
+          content: message.content
+        }
+      ]
+    });
+
+    const text = completion.choices[0].message.content;
 
     memory[OWNER_ID].push({ layla: text });
     saveMemory(memory);
