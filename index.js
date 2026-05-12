@@ -7,7 +7,7 @@ const {
   Partials
 } = require("discord.js");
 
-const OpenAI = require("openai");
+const Groq = require("groq-sdk");
 
 const client = new Client({
   intents: [
@@ -18,8 +18,8 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 const OWNER_ID = process.env.OWNER_ID;
@@ -114,10 +114,10 @@ client.on("messageCreate", async (message) => {
 
   const recentMemory = memory[OWNER_ID]
     .slice(-5)
-    .map(x => x.user)
+    .map(x => x.user || x.layla)
     .join("\n");
 
-  // 💡 نفس شخصية ليلى 100% (ما تغيّرت)
+  // شخصية ليلى (ما تغيرت)
   const prompt = `
 أنتِ ليلى.
 
@@ -152,8 +152,8 @@ ${message.content}
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
@@ -163,7 +163,9 @@ ${message.content}
           role: "user",
           content: message.content
         }
-      ]
+      ],
+      temperature: 0.9,
+      max_tokens: 300
     });
 
     const text = completion.choices[0].message.content;
