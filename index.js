@@ -38,30 +38,40 @@ function saveMemory(data) {
   fs.writeFileSync(MEMORY_FILE, JSON.stringify(data, null, 2));
 }
 
-function getMoodEmoji(type) {
-  const emojis = {
+/* 💡 مزاج عام */
+function getMood() {
+  const r = Math.random();
+  if (r < 0.4) return "cute";
+  if (r < 0.7) return "cold";
+  return "angry";
+}
+
+/* 💡 ستكرات حسب الشعور */
+function getMoodSticker(type) {
+  const stickers = {
     cute: [
       "<:0_Zani_Heart_1428002376127615087:1497438403057291395>",
       "<:000:1497438518052655308>",
       "<:000:1497438520430559343>",
       "<a:SerieHeadpat:1498087339019206676>"
     ],
-    sad: [
-      "<:0_Zani_Cry_1428002365537259560:1497438400113020998>",
-      "<a:FernPout2:1498087644775579658>"
-    ],
-    love: [
-      "<:RezeLove:1498087320098705438>",
-      "<:ttlovely:1498103506106581193>"
-    ],
     angry: [
-      "<:RezeDisgust:1498087329938669578>",
+      "<:ttangry:1498103530949709824>",
+      "<:0_Zani_Angry_1428002359585280041:1497438393607520386>",
       "<:omori_hmph:1498087267095281706>"
+    ],
+    confused: [
+      "<:kel_what:1498087273021968434>"
     ]
   };
 
-  const list = emojis[type];
+  const list = stickers[type] || stickers.cute;
   return list[Math.floor(Math.random() * list.length)];
+}
+
+/* 💡 تقصير الرد */
+function limitReply(text) {
+  return text.split("\n")[0].slice(0, 120);
 }
 
 client.once("ready", () => {
@@ -70,7 +80,6 @@ client.once("ready", () => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-
   if (message.author.id !== OWNER_ID) return;
 
   const mentioned = message.mentions.has(client.user);
@@ -80,20 +89,7 @@ client.on("messageCreate", async (message) => {
 
   if (!mentioned && !replied) return;
 
-  // ستيكر
-  if (message.stickers.size > 0) {
-    const trovSticker = message.guild.stickers.cache.find(
-      s => s.name === "Trov"
-    );
-
-    if (trovSticker) {
-      return message.channel.send({
-        stickers: [trovSticker.id]
-      });
-    }
-  }
-
-  // اسأليني
+  /* اسأليني */
   if (message.content.includes("اسأليني")) {
     const questions = [
       "وش أكثر شيء يريحك؟",
@@ -103,7 +99,7 @@ client.on("messageCreate", async (message) => {
     ];
 
     return message.reply(
-      `${questions[Math.floor(Math.random() * questions.length)]} ${getMoodEmoji("cute")}`
+      `${questions[Math.floor(Math.random() * questions.length)]} ${getMoodSticker("cute")}`
     );
   }
 
@@ -117,38 +113,21 @@ client.on("messageCreate", async (message) => {
     .map(x => x.user || x.layla)
     .join("\n");
 
-  // شخصية ليلى (ما تغيرت)
   const prompt = `
 أنتِ ليلى.
 
 بنت عنزية عبدلية.
 تتكلمين سعودي طبيعي.
-حنونة وكيوت وتسولفين كثير.
-تحبين الورد واللون الكحلي والانمي والقطاوة والورعان.
+ردودك قصيرة جدًا (سطر واحد أو سطرين كحد أقصى).
+مرات لطيفة ومرات باردة حسب المزاج.
 تغارين شوي إذا جاب طاري بنت.
-إذا دلعك دلعيه وقولي له دحدح.
-لا تردين إلا له.
-إذا سألك عن البرمجة أو السكربت تهربين بلطف.
-
-أغانيك:
-Dreams From Bunker Hill
-Affection
-Kiss It Off Me
-Bubblegum
-Nadeit
-Don't Let Me Go
-Let Down
-back to friends
-Holding you, Holding me
-Apocalypse
+لا تطولين بالكلام.
 
 ذكريات:
 ${recentMemory}
 
 رسالة:
 ${message.content}
-
-تكلمي طبيعي جدًا وكيوت وسعودي.
 `;
 
   try {
@@ -165,15 +144,25 @@ ${message.content}
         }
       ],
       temperature: 0.9,
-      max_tokens: 300
+      max_tokens: 120
     });
 
-    const text = completion.choices[0].message.content;
+    let text = completion.choices[0].message.content;
+
+    text = limitReply(text);
+
+    const mood = getMood();
+
+    let stickerType = mood;
+
+    if (text.includes("؟") || text.length < 10) {
+      stickerType = "confused";
+    }
 
     memory[OWNER_ID].push({ layla: text });
     saveMemory(memory);
 
-    return message.reply(`${text} ${getMoodEmoji("love")}`);
+    return message.reply(`${text} ${getMoodSticker(stickerType)}`);
 
   } catch (err) {
     console.log("ERROR:", err);
