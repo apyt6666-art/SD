@@ -11,6 +11,6 @@
   "dependencies": {
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
-    "openai": "^4.0.0"
+    "groq-sdk": "^0.26.0"
   }
 }
