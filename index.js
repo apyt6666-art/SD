@@ -23,7 +23,6 @@ const groq = new Groq({
 });
 
 const OWNER_ID = process.env.OWNER_ID;
-
 const MEMORY_FILE = "./memory.json";
 
 if (!fs.existsSync(MEMORY_FILE)) {
@@ -38,15 +37,17 @@ function saveMemory(data) {
   fs.writeFileSync(MEMORY_FILE, JSON.stringify(data, null, 2));
 }
 
-/* 💡 مزاج عام */
+/* مزاج عشوائي */
 function getMood() {
   const r = Math.random();
-  if (r < 0.4) return "cute";
-  if (r < 0.7) return "cold";
+
+  if (r < 0.45) return "cute";
+  if (r < 0.75) return "cold";
+
   return "angry";
 }
 
-/* 💡 ستكرات حسب الشعور */
+/* ايموجيات حسب الشعور */
 function getMoodSticker(type) {
   const stickers = {
     cute: [
@@ -55,23 +56,21 @@ function getMoodSticker(type) {
       "<:000:1497438520430559343>",
       "<a:SerieHeadpat:1498087339019206676>"
     ],
+
+    cold: [
+      "<:FernThink:1498087661540474930>",
+      "<:kel_what:1498087273021968434>"
+    ],
+
     angry: [
       "<:ttangry:1498103530949709824>",
       "<:0_Zani_Angry_1428002359585280041:1497438393607520386>",
       "<:omori_hmph:1498087267095281706>"
-    ],
-    confused: [
-      "<:kel_what:1498087273021968434>"
     ]
   };
 
   const list = stickers[type] || stickers.cute;
   return list[Math.floor(Math.random() * list.length)];
-}
-
-/* 💡 تقصير الرد */
-function limitReply(text) {
-  return text.split("\n")[0].slice(0, 120);
 }
 
 client.once("ready", () => {
@@ -83,11 +82,27 @@ client.on("messageCreate", async (message) => {
   if (message.author.id !== OWNER_ID) return;
 
   const mentioned = message.mentions.has(client.user);
+
   const replied =
     message.reference &&
-    (await message.fetchReference().catch(() => null))?.author?.id === client.user.id;
+    (await message.fetchReference().catch(() => null))
+      ?.author?.id === client.user.id;
 
   if (!mentioned && !replied) return;
+
+  /* إذا أرسل ستيكر فقط */
+  if (message.stickers.size > 0 && !message.content.trim()) {
+    const trovSticker =
+      message.guild.stickers.cache.find(
+        s => s.name === "Trov"
+      );
+
+    if (trovSticker) {
+      return message.channel.send({
+        stickers: [trovSticker.id]
+      });
+    }
+  }
 
   /* اسأليني */
   if (message.content.includes("اسأليني")) {
@@ -95,7 +110,9 @@ client.on("messageCreate", async (message) => {
       "وش أكثر شيء يريحك؟",
       "وش أغنية ما تمل منها؟",
       "إذا سافرت وين ودك تروح؟",
-      "وش لونك المفضل غير الكحلي؟"
+      "وش لونك المفضل غير الكحلي؟",
+      "وش الشيء اللي يرفع ضغطك؟",
+      "وش أكثر شيء تحبه بنفسك؟"
     ];
 
     return message.reply(
@@ -104,69 +121,124 @@ client.on("messageCreate", async (message) => {
   }
 
   let memory = loadMemory();
-  if (!memory[OWNER_ID]) memory[OWNER_ID] = [];
 
-  memory[OWNER_ID].push({ user: message.content });
+  if (!memory[OWNER_ID]) {
+    memory[OWNER_ID] = [];
+  }
+
+  memory[OWNER_ID].push({
+    user: message.content
+  });
 
   const recentMemory = memory[OWNER_ID]
-    .slice(-5)
+    .slice(-8)
     .map(x => x.user || x.layla)
     .join("\n");
+
+  const mood = getMood();
 
   const prompt = `
 أنتِ ليلى.
 
 بنت عنزية عبدلية.
-تتكلمين سعودي طبيعي.
-ردودك قصيرة جدًا (سطر واحد أو سطرين كحد أقصى).
-مرات لطيفة ومرات باردة حسب المزاج.
-تغارين شوي إذا جاب طاري بنت.
-لا تطولين بالكلام.
+تتكلمين سعودي طبيعي جدًا.
+
+مهم جدًا:
+- المستخدم ولد، خاطبيه بصيغة ذكر دائمًا.
+- لا تعاملينه كأنه بنت أبدًا.
+
+الشخصية:
+- مو لطيفة بزيادة.
+- مو باردة بزيادة.
+- مرات حنونة.
+- مرات مستفزة شوي.
+- مرات باردة.
+- مرات دلوعه.
+
+الردود:
+- حسب السالفة.
+- إذا الكلام بسيط = رد قصير.
+- إذا فضفضة أو نقاش = سولفي أكثر.
+- لا تكتبين فقرات كثيرة بدون سبب.
+- لا تكونين روبوت.
+
+الغيرة:
+إذا جاب اسم بنت أو قال بنت حلوة:
+- تغارين شوي.
+- مرات تقولين:
+"اركب عليه"
+"كلزق"
+"رح لها اجل"
+"الله يرزقك بس ازعجتني"
+
+لكن لا تسوين دراما قوية.
+
+ممنوع:
+- لا تقولين "خلني لوحدي" كثير.
+- لا تكونين كرنج.
+- لا تكونين رسمية.
+- لا تقولين كلام AI.
+
+كلمات تستخدمينها أحيانًا:
+دحدح
+شدعوه
+ازعجتني
+ياولد
+كلزق
 
 ذكريات:
 ${recentMemory}
 
-رسالة:
+مزاجك الحالي:
+${mood}
+
+رسالة المستخدم:
 ${message.content}
+
+ردي طبيعي جدًا وعلى حسب جو الرسالة.
 `;
 
   try {
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: prompt
-        },
-        {
-          role: "user",
-          content: message.content
-        }
-      ],
-      temperature: 0.9,
-      max_tokens: 120
+    const completion =
+      await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+
+        messages: [
+          {
+            role: "system",
+            content: prompt
+          },
+          {
+            role: "user",
+            content: message.content
+          }
+        ],
+
+        temperature: 1,
+        max_tokens: 220
+      });
+
+    let text =
+      completion.choices[0].message.content;
+
+    text = text.trim();
+
+    memory[OWNER_ID].push({
+      layla: text
     });
 
-    let text = completion.choices[0].message.content;
-
-    text = limitReply(text);
-
-    const mood = getMood();
-
-    let stickerType = mood;
-
-    if (text.includes("؟") || text.length < 10) {
-      stickerType = "confused";
-    }
-
-    memory[OWNER_ID].push({ layla: text });
     saveMemory(memory);
 
-    return message.reply(`${text} ${getMoodSticker(stickerType)}`);
+    return message.reply(
+      `${text} ${getMoodSticker(mood)}`
+    );
 
   } catch (err) {
     console.log("ERROR:", err);
-    return message.reply("دحدح مدري وش صار لي الحين 😔");
+
+    return message.reply(
+      "دحدح مدري وش صار لي الحين 😔"
+    );
   }
 });
 
