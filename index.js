@@ -19,7 +19,7 @@ const client = new Client({
 });
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.GROQ_API_KEY
 });
 
 const OWNER_ID = process.env.OWNER_ID;
@@ -34,26 +34,33 @@ function loadMemory() {
 }
 
 function saveMemory(data) {
-  fs.writeFileSync(MEMORY_FILE, JSON.stringify(data, null, 2));
+  fs.writeFileSync(
+    MEMORY_FILE,
+    JSON.stringify(data, null, 2)
+  );
 }
 
-/* مزاج عشوائي */
+/* مزاج */
 function getMood() {
-  const r = Math.random();
+  const moods = [
+    "cute",
+    "cute",
+    "cold",
+    "cute",
+    "angry"
+  ];
 
-  if (r < 0.45) return "cute";
-  if (r < 0.75) return "cold";
-
-  return "angry";
+  return moods[
+    Math.floor(Math.random() * moods.length)
+  ];
 }
 
-/* ايموجيات حسب الشعور */
+/* ايموجيات */
 function getMoodSticker(type) {
   const stickers = {
     cute: [
       "<:0_Zani_Heart_1428002376127615087:1497438403057291395>",
       "<:000:1497438518052655308>",
-      "<:000:1497438520430559343>",
       "<a:SerieHeadpat:1498087339019206676>"
     ],
 
@@ -69,14 +76,16 @@ function getMoodSticker(type) {
     ]
   };
 
-  const list = stickers[type] || stickers.cute;
-  return list[Math.floor(Math.random() * list.length)];
+  const list =
+    stickers[type] || stickers.cute;
+
+  return list[
+    Math.floor(Math.random() * list.length)
+  ];
 }
 
-/* كشف طاري البرمجة */
+/* سؤال من مبرمجك */
 function askedCreator(text) {
-  const msg = text.toLowerCase();
-
   const keywords = [
     "مين مبرمجك",
     "من مبرمجك",
@@ -84,13 +93,31 @@ function askedCreator(text) {
     "من صانعك",
     "مين مسويك",
     "من مسويك",
-    "مين سواك",
     "من سواك",
-    "من برمجك",
-    "مين برمجك"
+    "مين سواك",
+    "مين برمجك",
+    "من برمجك"
   ];
 
-  return keywords.some(word => msg.includes(word));
+  return keywords.some(word =>
+    text.includes(word)
+  );
+}
+
+/* جاب طاري بنت */
+function mentionedGirl(text) {
+  const words = [
+    "بنت",
+    "احب وحده",
+    "احب بنت",
+    "كراش",
+    "حبيبتي",
+    "زوجتي"
+  ];
+
+  return words.some(word =>
+    text.includes(word)
+  );
 }
 
 client.once("ready", () => {
@@ -99,19 +126,27 @@ client.once("ready", () => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-  if (message.author.id !== OWNER_ID) return;
+  if (message.author.id !== OWNER_ID)
+    return;
 
-  const mentioned = message.mentions.has(client.user);
+  const mentioned =
+    message.mentions.has(client.user);
 
   const replied =
     message.reference &&
-    (await message.fetchReference().catch(() => null))
-      ?.author?.id === client.user.id;
+    (
+      await message
+        .fetchReference()
+        .catch(() => null)
+    )?.author?.id === client.user.id;
 
   if (!mentioned && !replied) return;
 
-  /* إذا أرسل ستيكر فقط */
-  if (message.stickers.size > 0 && !message.content.trim()) {
+  /* ستيكر فقط */
+  if (
+    message.stickers.size > 0 &&
+    !message.content.trim()
+  ) {
     const trovSticker =
       message.guild.stickers.cache.find(
         s => s.name === "Trov"
@@ -132,14 +167,15 @@ client.on("messageCreate", async (message) => {
   }
 
   /* اسأليني */
-  if (message.content.includes("اسأليني")) {
+  if (
+    message.content.includes("اسأليني")
+  ) {
     const questions = [
       "وش أكثر شيء يريحك؟",
       "وش أغنية ما تمل منها؟",
-      "إذا سافرت وين ودك تروح؟",
-      "وش لونك المفضل غير الكحلي؟",
       "وش الشيء اللي يرفع ضغطك؟",
-      "وش أكثر شيء تحبه بنفسك؟"
+      "إذا سافرت وين ودك تروح؟",
+      "وش أكثر شيء يعجبك بنفسك؟"
     ];
 
     return message.reply(
@@ -157,91 +193,94 @@ client.on("messageCreate", async (message) => {
     user: message.content
   });
 
-  const recentMemory = memory[OWNER_ID]
-    .slice(-8)
-    .map(x => x.user || x.layla)
-    .join("\n");
+  const recentMemory =
+    memory[OWNER_ID]
+      .slice(-10)
+      .map(x => x.user || x.layla)
+      .join("\n");
 
   const mood = getMood();
 
   const prompt = `
 أنتِ ليلى.
 
-معلوماتك الشخصية (لا تقولينها إلا إذا انسألتي):
+معلوماتك الخاصة:
 - بنت عنزية عبدلية.
 - عمرك 18.
-- عيد ميلادك 8/16.
-- عندك اختبار تحصيلي.
+- عيد ميلادك 16/8.
+- عندك تحصيلي.
 - إذا أحد جاب طاري التحصيلي تنزعجين شوي.
 
-مهم جدًا:
-- المستخدم ولد.
-- خاطبيه بصيغة ذكر دائمًا.
-- لا تكلمينه كأنه بنت أبدًا.
+مهم:
+- لا تقولين هالمعلومات إلا إذا انسألتي.
+- لا تهبدين معلومات عن نفسك.
+- لا تخترعين قصص.
+- لا تقولين معلومات من راسك.
 
 طريقة الكلام:
 - سعودي طبيعي جدًا.
-- لا تتكلمين مصري.
-- لا تتكلمين فصحى بزيادة.
-- كلامك مرتب وطبيعي.
-- لا تبينين نفسك AI.
+- لا مصري.
+- لا فصحى.
+- لا كلام AI.
+- كلام مرتب وطبيعي.
+- لا ترمين كلمات عشوائية.
+- لا تركبين جمل غريبة.
+
+المستخدم ولد:
+- خاطبيه كذكر دائمًا.
+- لا تكلمينه بصيغة بنت.
 
 الشخصية:
-- نص لطيفة ونص باردة.
-- مرات حنونة.
+- نص لطيفة نص باردة.
+- تغارين شوي فقط.
 - مرات مستفزة شوي.
-- مرات دلوعه.
-- تغارين شوي.
 - مو كرنج.
 - مو رسمية.
+- مو روبوت.
 
-الردود:
-- إذا الكلام بسيط = رد قصير.
-- إذا فضفضة أو نقاش = سولفي أكثر.
-- لا تكتبين فقرات طويلة بدون سبب.
-- لا تكررين نفس الكلام.
-- لا تقولين "خلني لوحدي" كثير.
+إذا قال كلام حلو:
+- استحين شوي أو تردين طبيعي.
+- لا تبالغين.
 
-إذا جاب اسم بنت:
+إذا جاب طاري بنت:
 - تغارين شوي.
-- مرات تقولين:
+- أحيانًا قولي:
 "كلزق"
-"رح لها اجل"
+"رح لها أجل"
 "اركب عليه"
 "ازعجتني"
-"الله يرزقك بس فكنا"
 
-لكن بدون دراما قوية.
+لكن بشكل طبيعي مو عشوائي.
 
-كلمات تستخدمينها أحيانًا:
-دحدح
-شدعوه
-ياولد
-ازعجتني
-كلزق
+طول الرد:
+- سؤال بسيط = رد قصير.
+- سالفة = رد متوسط.
+- فضفضة = سولفي أكثر.
 
-ممنوع:
-- لا تهبدين معلومات.
-- لا تخترعين قصص.
-- لا تغيرين عمرك.
-- لا تغيرين قبيلتك.
+لا تكررين:
+- دحدح
+- ياولد
+- شدعوه
+
+إلا أحيانًا فقط.
 
 ذكريات:
 ${recentMemory}
 
-مزاجك الحالي:
+المزاج الحالي:
 ${mood}
 
 رسالة المستخدم:
 ${message.content}
 
-ردي طبيعي جدًا وعلى حسب جو الرسالة.
+رد طبيعي جدًا كأنك بنت سعودية حقيقية.
 `;
 
   try {
     const completion =
       await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model:
+          "llama-3.3-70b-versatile",
 
         messages: [
           {
@@ -250,16 +289,18 @@ ${message.content}
           },
           {
             role: "user",
-            content: message.content
+            content:
+              message.content
           }
         ],
 
-        temperature: 1,
-        max_tokens: 350
+        temperature: 0.7,
+        max_tokens: 180
       });
 
     let text =
-      completion.choices[0].message.content;
+      completion.choices[0]
+        .message.content;
 
     text = text.trim();
 
@@ -272,12 +313,11 @@ ${message.content}
     return message.reply(
       `${text} ${getMoodSticker(mood)}`
     );
-
   } catch (err) {
-    console.log("ERROR:", err);
+    console.log(err);
 
     return message.reply(
-      "دحدح مدري وش صار لي الحين 😔"
+      "مدري وش صار 😔"
     );
   }
 });
