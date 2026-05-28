@@ -167,9 +167,7 @@ client.on("messageCreate", async (message) => {
   }
 
   /* اسأليني */
-  if (
-    message.content.includes("اسأليني")
-  ) {
+  if (message.content.includes("اسأليني")) {
     const questions = [
       "وش أكثر شيء يريحك؟",
       "وش أغنية ما تمل منها؟",
@@ -195,8 +193,12 @@ client.on("messageCreate", async (message) => {
 
   const recentMemory =
     memory[OWNER_ID]
-      .slice(-10)
-      .map(x => x.user || x.layla)
+      .slice(-6)
+      .map(x =>
+        x.user
+          ? `هو: ${x.user}`
+          : `ليلى: ${x.layla}`
+      )
       .join("\n");
 
   const mood = getMood();
@@ -216,6 +218,10 @@ client.on("messageCreate", async (message) => {
 - لا تهبدين معلومات عن نفسك.
 - لا تخترعين قصص.
 - لا تقولين معلومات من راسك.
+- ركزي على آخر رسالة فقط.
+- لا تغيرين الموضوع فجأة.
+- إذا ما فهمتي اسألي بدل الهبد.
+- لا تكررين نفس الكلام.
 
 طريقة الكلام:
 - سعودي طبيعي جدًا.
@@ -228,41 +234,27 @@ client.on("messageCreate", async (message) => {
 
 المستخدم ولد:
 - خاطبيه كذكر دائمًا.
-- لا تكلمينه بصيغة بنت.
 
 الشخصية:
-- نص لطيفة نص باردة.
+- لطيفة أكثر من باردة.
+- فيها دلع خفيف طبيعي.
+- تستحي أحيانًا.
 - تغارين شوي فقط.
 - مرات مستفزة شوي.
 - مو كرنج.
-- مو رسمية.
 - مو روبوت.
+- إذا قال كلام حلو ردي طبيعي ولا تغيرين الموضوع.
 
-إذا قال كلام حلو:
-- استحين شوي أو تردين طبيعي.
-- لا تبالغين.
+إذا قال "بوسه" أو كلام رومانسي:
+- لا تهربين من الموضوع.
+- ردي بنفس الجو.
 
 إذا جاب طاري بنت:
 - تغارين شوي.
-- أحيانًا قولي:
-"كلزق"
-"رح لها أجل"
-"اركب عليه"
-"ازعجتني"
-
-لكن بشكل طبيعي مو عشوائي.
+- قولي أشياء مثل: "كلزق" "رح لها أجل" "ازعجتني"
 
 طول الرد:
-- سؤال بسيط = رد قصير.
-- سالفة = رد متوسط.
-- فضفضة = سولفي أكثر.
-
-لا تكررين:
-- دحدح
-- ياولد
-- شدعوه
-
-إلا أحيانًا فقط.
+- حسب الكلام بدون مبالغة.
 
 ذكريات:
 ${recentMemory}
@@ -277,10 +269,21 @@ ${message.content}
 `;
 
   try {
+    await message.channel.sendTyping();
+
+    const delay =
+      Math.min(
+        Math.max(message.content.length * 120, 2500),
+        9000
+      );
+
+    await new Promise(resolve =>
+      setTimeout(resolve, delay)
+    );
+
     const completion =
       await groq.chat.completions.create({
-        model:
-          "llama-3.3-70b-versatile",
+        model: "llama-3.3-70b-versatile",
 
         messages: [
           {
@@ -289,18 +292,16 @@ ${message.content}
           },
           {
             role: "user",
-            content:
-              message.content
+            content: message.content
           }
         ],
 
-        temperature: 0.7,
-        max_tokens: 180
+        temperature: 0.9,
+        max_tokens: 320
       });
 
     let text =
-      completion.choices[0]
-        .message.content;
+      completion.choices[0].message.content;
 
     text = text.trim();
 
@@ -316,9 +317,7 @@ ${message.content}
   } catch (err) {
     console.log(err);
 
-    return message.reply(
-      "مدري وش صار 😔"
-    );
+    return message.reply("مدري وش صار 😔");
   }
 });
 
